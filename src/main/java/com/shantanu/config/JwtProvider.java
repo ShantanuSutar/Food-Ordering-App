@@ -53,6 +53,6 @@ public class JwtProvider {
             auths.add(authority.getAuthority());
         }
 
-        return String.join(",", auths)
+        return String.join(",", auths);
     }
 }
