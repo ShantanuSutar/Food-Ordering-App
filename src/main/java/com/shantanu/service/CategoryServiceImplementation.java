@@ -2,7 +2,7 @@ package com.shantanu.service;
 
 import com.shantanu.model.Category;
 import com.shantanu.model.Restaurant;
-import com.shantanu.repository.CategoryRespository;
+import com.shantanu.repository.CategoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +16,7 @@ public class CategoryServiceImplementation implements CategoryService{
     private RestaurantService restaurantService;
 
     @Autowired
-    private CategoryRespository categoryRespository;
+    private CategoryRepository categoryRepository;
 
     @Override
     public Category createCategory(String name, Long userId) throws Exception {
@@ -24,18 +24,18 @@ public class CategoryServiceImplementation implements CategoryService{
         Category category = new Category();
         category.setName(name);
         category.setRestaurant(restaurant);
-        return categoryRespository.save(category);
+        return categoryRepository.save(category);
     }
 
     @Override
     public List<Category> findCategoryByRestaurantId(Long id) throws Exception {
         Restaurant restaurant = restaurantService.getRestaurantByUserId(id);
-        return categoryRespository.findByRestaurantId(restaurant.getId());
+        return categoryRepository.findByRestaurantId(restaurant.getId());
     }
 
     @Override
     public Category findCategoryById(Long id) throws Exception {
-        Optional<Category> optionalCategory = categoryRespository.findById(id);
+        Optional<Category> optionalCategory = categoryRepository.findById(id);
 
         if(optionalCategory.isEmpty()){
             throw new Exception("Category not found!");
