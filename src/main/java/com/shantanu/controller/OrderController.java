@@ -5,7 +5,9 @@ import com.shantanu.model.Order;
 import com.shantanu.model.User;
 import com.shantanu.request.AddCartItemRequest;
 import com.shantanu.request.OrderRequest;
+import com.shantanu.response.PaymentResponse;
 import com.shantanu.service.OrderService;
+import com.shantanu.service.PaymentService;
 import com.shantanu.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,13 +24,17 @@ public class OrderController {
     private OrderService orderService;
 
     @Autowired
+    private PaymentService paymentService;
+
+    @Autowired
     private UserService userService;
 
     @PostMapping("/order")
-    public ResponseEntity<Order> createOrder(@RequestBody OrderRequest req, @RequestHeader("Authorization") String jwt) throws Exception{
+    public ResponseEntity<PaymentResponse> createOrder(@RequestBody OrderRequest req, @RequestHeader("Authorization") String jwt) throws Exception{
         User user = userService.findUserByJwtToken(jwt);
         Order order = orderService.createOrder(req, user);
-        return new ResponseEntity<>(order, HttpStatus.CREATED);
+        PaymentResponse res = paymentService.createPaymentLink(order);
+        return new ResponseEntity<>(res, HttpStatus.CREATED);
     }
 
 
