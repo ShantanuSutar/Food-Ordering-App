@@ -62,7 +62,10 @@ public class FoodServiceImplementation implements FoodService {
             foods = filterByIsSeasonal(foods, isSeasonal);
         }
 
-        if(foodCategory != null && !foodCategory.equals("")){
+        if (foodCategory != null
+                && !foodCategory.isBlank()
+                && !foodCategory.equalsIgnoreCase("null")) {
+
             foods = filterByCategory(foods, foodCategory);
         }
         return foods;
