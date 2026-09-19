@@ -25,7 +25,7 @@ public class AppConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource, JwtTokenValidator jwtTokenValidator) throws Exception{
         http.sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/food/top").permitAll()
+                        .requestMatchers("/api/food/top", "/api/food/search").permitAll()
                         .requestMatchers("/api/admin/**").hasAnyRole("RESTAURANT_OWNER", "ADMIN")
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())
@@ -42,7 +42,11 @@ public class AppConfig {
             public @Nullable CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
                 CorsConfiguration cfg = new CorsConfiguration();
 
-                cfg.setAllowedOrigins(Arrays.asList("https://dinehub-app.vercel.app", "http://localhost:5173"));
+                cfg.setAllowedOrigins(Arrays.asList(
+                        "https://dinehub-app.vercel.app",
+                        "http://localhost:5173",
+                        "http://127.0.0.1:5173"
+                ));
                 cfg.setAllowedMethods(Collections.singletonList("*"));
                 cfg.setAllowCredentials(true);
                 cfg.setAllowedHeaders(Collections.singletonList("*"));

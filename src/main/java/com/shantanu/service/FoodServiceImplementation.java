@@ -5,6 +5,7 @@ import com.shantanu.model.Food;
 import com.shantanu.model.Restaurant;
 import com.shantanu.repository.FoodRepository;
 import com.shantanu.request.CreateFoodRequest;
+import com.shantanu.response.FoodSearchResponse;
 import com.shantanu.response.TopMealResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -96,8 +97,40 @@ public class FoodServiceImplementation implements FoodService {
     }
 
     @Override
-    public List<Food> searchFood(String keyword) {
-        return foodRepository.searchFood(keyword);
+    public List<FoodSearchResponse> searchFood(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return List.of();
+        }
+
+        return foodRepository.searchFood(keyword.trim(), PageRequest.of(0, 12))
+                .stream()
+                .map(food -> {
+                    Category category = food.getFoodCategory();
+                    Restaurant restaurant = food.getRestaurant();
+                    String image = food.getImages() == null
+                            ? null
+                            : food.getImages().stream()
+                                    .filter(value -> value != null && !value.isBlank())
+                                    .findFirst()
+                                    .orElse(null);
+                    String city = restaurant.getAddress() == null
+                            ? null
+                            : restaurant.getAddress().getCity();
+
+                    return new FoodSearchResponse(
+                            food.getId(),
+                            food.getName(),
+                            food.getDescription(),
+                            food.getPrice(),
+                            image,
+                            category == null ? null : category.getId(),
+                            category == null ? null : category.getName(),
+                            restaurant.getId(),
+                            restaurant.getName(),
+                            city
+                    );
+                })
+                .toList();
     }
 
     @Override

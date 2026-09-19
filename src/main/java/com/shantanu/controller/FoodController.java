@@ -4,6 +4,7 @@ import com.shantanu.model.Food;
 import com.shantanu.model.Restaurant;
 import com.shantanu.model.User;
 import com.shantanu.request.CreateFoodRequest;
+import com.shantanu.response.FoodSearchResponse;
 import com.shantanu.response.TopMealResponse;
 import com.shantanu.service.FoodService;
 import com.shantanu.service.RestaurantService;
@@ -36,9 +37,8 @@ public class FoodController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Food>> searchFood(@RequestParam String name, @RequestHeader("Authorization") String jwt) throws Exception{
-        User user = userService.findUserByJwtToken(jwt);
-        List<Food> foods = foodService.searchFood(name);
+    public ResponseEntity<List<FoodSearchResponse>> searchFood(@RequestParam String name) {
+        List<FoodSearchResponse> foods = foodService.searchFood(name);
 
         return new ResponseEntity<>(foods, HttpStatus.OK);
     }

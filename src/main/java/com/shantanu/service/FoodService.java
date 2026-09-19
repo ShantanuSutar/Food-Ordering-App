@@ -4,6 +4,7 @@ import com.shantanu.model.Category;
 import com.shantanu.model.Food;
 import com.shantanu.model.Restaurant;
 import com.shantanu.request.CreateFoodRequest;
+import com.shantanu.response.FoodSearchResponse;
 import com.shantanu.response.TopMealResponse;
 
 import java.util.List;
@@ -16,7 +17,7 @@ public interface FoodService {
 
     public List<Food> getRestaurantsFood(Long RestaurantId, boolean isVegeterian, boolean isNonvegeterian, boolean isSeasonal, String foodCategory);
 
-    public List<Food> searchFood(String keyword);
+    public List<FoodSearchResponse> searchFood(String keyword);
 
     public Food findFoodById(Long foodId) throws Exception;
 
