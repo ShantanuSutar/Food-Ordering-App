@@ -4,6 +4,7 @@ import com.shantanu.model.Order;
 import com.shantanu.model.PaymentStatus;
 import com.shantanu.repository.OrderRepository;
 import com.shantanu.response.PaymentResponse;
+import com.shantanu.response.PaymentHistoryResponse;
 import com.shantanu.response.PaymentVerificationResponse;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
@@ -18,9 +19,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
+import java.util.List;
 
 @Service
 public class PaymentServiceImplementation implements PaymentService {
+
+    private static final String CHECKOUT_CURRENCY = "usd";
 
     @Value("${stripe.secret-key}")
     private String stripeSecretKey;
@@ -54,7 +58,7 @@ public class PaymentServiceImplementation implements PaymentService {
                 .addLineItem(SessionCreateParams.LineItem.builder()
                         .setQuantity(1L)
                         .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
-                                .setCurrency("usd")
+                                .setCurrency(CHECKOUT_CURRENCY)
                                 .setUnitAmount(order.getTotalPrice() * 100)
                                 .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
                                         .setName("DineHub order #" + order.getId())
@@ -66,6 +70,7 @@ public class PaymentServiceImplementation implements PaymentService {
         Session session = Session.create(params);
         order.setStripeSessionId(session.getId());
         order.setPaymentStatus(PaymentStatus.PENDING_PAYMENT);
+        order.setPaymentCurrency(CHECKOUT_CURRENCY);
         orderRepository.save(order);
 
         PaymentResponse response = new PaymentResponse();
@@ -140,6 +145,15 @@ public class PaymentServiceImplementation implements PaymentService {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<PaymentHistoryResponse> getPaymentHistory(Long userId) {
+        return orderRepository.findByCustomerIdOrderByCreatedAtDesc(userId).stream()
+                .filter(order -> order.getPaymentStatus() != null)
+                .map(this::toPaymentHistoryResponse)
+                .toList();
+    }
+
     private void finalizeSuccessfulPayment(Order order, Session session) throws Exception {
         if (order.getPaymentStatus() == PaymentStatus.PAID) {
             return;
@@ -147,6 +161,8 @@ public class PaymentServiceImplementation implements PaymentService {
 
         order.setPaymentStatus(PaymentStatus.PAID);
         order.setStripePaymentIntentId(session.getPaymentIntent());
+        order.setPaidAmount(session.getAmountTotal());
+        order.setPaymentCurrency(session.getCurrency());
         order.setPaidAt(new Date());
         orderRepository.save(order);
         cartService.clearCart(order.getCustomer().getId());
@@ -186,7 +202,7 @@ public class PaymentServiceImplementation implements PaymentService {
                 || metadataUserId == null
                 || !order.getCustomer().getId().toString().equals(metadataUserId)
                 || !expectedAmount.equals(session.getAmountTotal())
-                || !"usd".equalsIgnoreCase(session.getCurrency())) {
+                || !CHECKOUT_CURRENCY.equalsIgnoreCase(session.getCurrency())) {
             throw new Exception("Stripe session does not match this order");
         }
     }
@@ -218,6 +234,31 @@ public class PaymentServiceImplementation implements PaymentService {
                 true,
                 "Payment verified",
                 order.getPaymentStatus().name()
+        );
+    }
+
+    private PaymentHistoryResponse toPaymentHistoryResponse(Order order) {
+        Long amount = order.getPaidAmount();
+        if (amount == null && order.getTotalPrice() != null) {
+            amount = Math.multiplyExact(order.getTotalPrice(), 100L);
+        }
+
+        String currency = order.getPaymentCurrency();
+        if (currency == null || currency.isBlank()) {
+            currency = CHECKOUT_CURRENCY;
+        }
+
+        return new PaymentHistoryResponse(
+                order.getId(),
+                order.getRestaurant() == null ? null : order.getRestaurant().getId(),
+                order.getRestaurant() == null ? null : order.getRestaurant().getName(),
+                order.getCreatedAt(),
+                order.getPaidAt(),
+                amount,
+                currency,
+                order.getPaymentStatus(),
+                order.getStripePaymentIntentId(),
+                "Stripe Checkout"
         );
     }
 }

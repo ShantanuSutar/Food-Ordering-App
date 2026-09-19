@@ -40,6 +40,10 @@ public class Order {
     @JsonIgnore
     private String stripePaymentIntentId;
 
+    private Long paidAmount;
+
+    private String paymentCurrency;
+
     private Date paidAt;
 
     private Date createdAt;
