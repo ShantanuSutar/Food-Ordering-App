@@ -4,6 +4,7 @@ import com.shantanu.model.Category;
 import com.shantanu.model.Food;
 import com.shantanu.model.Restaurant;
 import com.shantanu.request.CreateFoodRequest;
+import com.shantanu.response.TopMealResponse;
 
 import java.util.List;
 
@@ -20,4 +21,6 @@ public interface FoodService {
     public Food findFoodById(Long foodId) throws Exception;
 
     public Food updateAvailabilityStatus(Long foodId) throws Exception;
+
+    public List<TopMealResponse> getTopMeals(int limit);
 }

@@ -4,6 +4,7 @@ import com.shantanu.model.Food;
 import com.shantanu.model.Restaurant;
 import com.shantanu.model.User;
 import com.shantanu.request.CreateFoodRequest;
+import com.shantanu.response.TopMealResponse;
 import com.shantanu.service.FoodService;
 import com.shantanu.service.RestaurantService;
 import com.shantanu.service.UserService;
@@ -26,6 +27,13 @@ public class FoodController {
 
     @Autowired
     private RestaurantService restaurantService;
+
+    @GetMapping("/top")
+    public ResponseEntity<List<TopMealResponse>> getTopMeals(
+            @RequestParam(defaultValue = "10") int limit
+    ) {
+        return new ResponseEntity<>(foodService.getTopMeals(limit), HttpStatus.OK);
+    }
 
     @GetMapping("/search")
     public ResponseEntity<List<Food>> searchFood(@RequestParam String name, @RequestHeader("Authorization") String jwt) throws Exception{

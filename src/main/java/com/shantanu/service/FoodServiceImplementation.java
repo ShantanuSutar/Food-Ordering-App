@@ -5,7 +5,9 @@ import com.shantanu.model.Food;
 import com.shantanu.model.Restaurant;
 import com.shantanu.repository.FoodRepository;
 import com.shantanu.request.CreateFoodRequest;
+import com.shantanu.response.TopMealResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -113,5 +115,37 @@ public class FoodServiceImplementation implements FoodService {
         Food food = findFoodById(foodId);
         food.setAvailable(!food.isAvailable());
         return foodRepository.save(food);
+    }
+
+    @Override
+    public List<TopMealResponse> getTopMeals(int limit) {
+        int resultLimit = Math.max(1, Math.min(limit, 12));
+
+        return foodRepository.findTopAvailableFoods(PageRequest.of(0, resultLimit))
+                .stream()
+                .map(food -> {
+                    Restaurant restaurant = food.getRestaurant();
+                    String image = food.getImages() == null
+                            ? null
+                            : food.getImages().stream()
+                                    .filter(value -> value != null && !value.isBlank())
+                                    .findFirst()
+                                    .orElse(null);
+                    String city = restaurant.getAddress() == null
+                            ? null
+                            : restaurant.getAddress().getCity();
+
+                    return new TopMealResponse(
+                            food.getId(),
+                            food.getName(),
+                            image,
+                            food.getPrice(),
+                            restaurant.getId(),
+                            restaurant.getName(),
+                            city,
+                            restaurant.getCuisineType()
+                    );
+                })
+                .toList();
     }
 }
