@@ -13,6 +13,7 @@ import com.shantanu.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,10 +32,12 @@ public class OrderController {
     private UserService userService;
 
     @PostMapping("/order")
+    @Transactional
     public ResponseEntity<PaymentResponse> createOrder(@RequestBody OrderRequest req, @RequestHeader("Authorization") String jwt) throws Exception{
         User user = userService.findUserByJwtToken(jwt);
         Order order = orderService.createOrder(req, user);
         PaymentResponse res = paymentService.createPaymentLink(order);
+        res.setDeliveryAddress(order.getDeliveryAddress());
         return new ResponseEntity<>(res, HttpStatus.CREATED);
     }
 
