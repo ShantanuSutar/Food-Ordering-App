@@ -7,10 +7,8 @@ import com.shantanu.model.Order;
 import com.shantanu.model.PaymentStatus;
 import com.shantanu.model.Restaurant;
 import com.shantanu.model.User;
-import com.shantanu.repository.AddressRepository;
 import com.shantanu.repository.OrderItemRepository;
 import com.shantanu.repository.OrderRepository;
-import com.shantanu.repository.UserRepository;
 import com.shantanu.request.AddressRequest;
 import com.shantanu.request.OrderRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,9 +21,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,9 +36,7 @@ class OrderServiceImplementationTest {
     @Mock
     private OrderItemRepository orderItemRepository;
     @Mock
-    private AddressRepository addressRepository;
-    @Mock
-    private UserRepository userRepository;
+    private AddressService addressService;
     @Mock
     private RestaurantService restaurantService;
     @Mock
@@ -50,6 +47,7 @@ class OrderServiceImplementationTest {
 
     private User user;
     private Restaurant restaurant;
+    private Cart cart;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -65,66 +63,57 @@ class OrderServiceImplementationTest {
         cartItem.setQuantity(1);
         cartItem.setTotalPrice(250L);
 
-        Cart cart = new Cart();
+        cart = new Cart();
         cart.setItems(new ArrayList<>());
         cart.getItems().add(cartItem);
 
         when(restaurantService.findRestaurantById(2L)).thenReturn(restaurant);
         when(cartService.findCartByUserId(1L)).thenReturn(cart);
-        when(cartService.calculateCartTotals(cart)).thenReturn(250L);
-        when(orderItemRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(orderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(cartService.calculateCartTotals(cart)).thenReturn(250L);
+        lenient().when(orderItemRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(orderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
-    void savesNewCanonicalAddressAndAddsItToUser() throws Exception {
-        when(addressRepository.save(any())).thenAnswer(invocation -> {
-            Address address = invocation.getArgument(0);
-            address.setId(10L);
-            return address;
-        });
-
-        Order order = orderService.createOrder(orderRequest(completeAddress(null)), user);
-
-        assertEquals(1, user.getAddresses().size());
-        assertEquals("Maharashtra", order.getDeliveryAddress().getState());
-        assertEquals("411001", order.getDeliveryAddress().getPostalCode());
-        assertEquals(PaymentStatus.PENDING_PAYMENT, order.getPaymentStatus());
-        verify(userRepository).save(user);
-    }
-
-    @Test
-    void reusesAnIdenticalSavedAddressIgnoringCaseAndWhitespace() throws Exception {
-        Address existing = addressEntity(7L);
-        user.getAddresses().add(existing);
-        AddressRequest duplicate = completeAddress(null);
-        duplicate.setCity(" pune ");
-        duplicate.setState("MAHARASHTRA");
-
-        Order order = orderService.createOrder(orderRequest(duplicate), user);
-
-        assertSame(existing, order.getDeliveryAddress());
-        verify(addressRepository, never()).save(any());
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
-    void updatesAnOwnedLegacyAddressBeforeCheckout() throws Exception {
-        Address legacy = new Address();
-        legacy.setId(7L);
-        legacy.setCity("Pune");
-        legacy.setState("Maharashtra");
-        legacy.setPostalCode("411001");
-        legacy.setCountry("India");
-        user.getAddresses().add(legacy);
-        when(addressRepository.save(legacy)).thenReturn(legacy);
+    void createsOrderWithIndependentDeliveryAddressSnapshot() throws Exception {
+        Address savedAddress = addressEntity(7L);
+        Address snapshot = addressEntity(99L);
+        when(addressService.resolveCheckoutAddress(any(), any())).thenReturn(savedAddress);
+        when(addressService.createSnapshot(savedAddress)).thenReturn(snapshot);
 
         Order order = orderService.createOrder(orderRequest(completeAddress(7L)), user);
 
-        assertSame(legacy, order.getDeliveryAddress());
-        assertEquals("Asha Patil", legacy.getFullName());
-        assertEquals("12 Market Road", legacy.getStreetAddress());
-        verify(addressRepository).save(legacy);
+        assertEquals(PaymentStatus.PENDING_PAYMENT, order.getPaymentStatus());
+        assertEquals(250L, order.getTotalPrice());
+        assertNotSame(savedAddress, order.getDeliveryAddress());
+        assertEquals(99L, order.getDeliveryAddress().getId());
+        verify(addressService).createSnapshot(savedAddress);
+    }
+
+    @Test
+    void rejectsCheckoutWhenCartIsEmpty() {
+        cart.getItems().clear();
+
+        Exception error = assertThrows(
+                Exception.class,
+                () -> orderService.createOrder(orderRequest(completeAddress(7L)), user)
+        );
+
+        assertEquals("Your cart is empty", error.getMessage());
+    }
+
+    @Test
+    void resolvesAddressThroughSharedAddressService() throws Exception {
+        AddressRequest requestAddress = completeAddress(null);
+        Address savedAddress = addressEntity(10L);
+        Address snapshot = addressEntity(11L);
+        when(addressService.resolveCheckoutAddress(requestAddress, user)).thenReturn(savedAddress);
+        when(addressService.createSnapshot(savedAddress)).thenReturn(snapshot);
+
+        orderService.createOrder(orderRequest(requestAddress), user);
+
+        verify(addressService).resolveCheckoutAddress(requestAddress, user);
+        verify(addressService).createSnapshot(savedAddress);
     }
 
     private OrderRequest orderRequest(AddressRequest address) {
