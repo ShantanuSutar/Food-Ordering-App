@@ -4,6 +4,7 @@ import com.shantanu.model.Address;
 import com.shantanu.model.Cart;
 import com.shantanu.model.CartItem;
 import com.shantanu.model.Order;
+import com.shantanu.model.PaymentStatus;
 import com.shantanu.model.Restaurant;
 import com.shantanu.model.User;
 import com.shantanu.repository.AddressRepository;
@@ -88,6 +89,7 @@ class OrderServiceImplementationTest {
         assertEquals(1, user.getAddresses().size());
         assertEquals("Maharashtra", order.getDeliveryAddress().getState());
         assertEquals("411001", order.getDeliveryAddress().getPostalCode());
+        assertEquals(PaymentStatus.PENDING_PAYMENT, order.getPaymentStatus());
         verify(userRepository).save(user);
     }
 

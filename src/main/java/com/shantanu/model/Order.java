@@ -29,6 +29,19 @@ public class Order {
 
     private Long totalAmount;
     private String orderStatus;
+
+    @Enumerated(EnumType.STRING)
+    private PaymentStatus paymentStatus;
+
+    @Column(unique = true)
+    @JsonIgnore
+    private String stripeSessionId;
+
+    @JsonIgnore
+    private String stripePaymentIntentId;
+
+    private Date paidAt;
+
     private Date createdAt;
 
     @ManyToOne

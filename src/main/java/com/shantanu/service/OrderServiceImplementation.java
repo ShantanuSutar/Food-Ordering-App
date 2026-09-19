@@ -60,6 +60,7 @@ public class OrderServiceImplementation implements OrderService {
         createdOrder.setCustomer(user);
         createdOrder.setCreatedAt(new Date());
         createdOrder.setOrderStatus("PENDING");
+        createdOrder.setPaymentStatus(PaymentStatus.PENDING_PAYMENT);
         createdOrder.setDeliveryAddress(savedAddress);
         createdOrder.setRestaurant(restaurant);
 

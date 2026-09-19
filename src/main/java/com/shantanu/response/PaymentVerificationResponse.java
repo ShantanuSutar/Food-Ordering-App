@@ -8,4 +8,5 @@ import lombok.Data;
 public class PaymentVerificationResponse {
     private boolean verified;
     private String message;
+    private String paymentStatus;
 }
