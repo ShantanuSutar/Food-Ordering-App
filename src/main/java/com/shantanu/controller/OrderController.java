@@ -6,6 +6,7 @@ import com.shantanu.model.User;
 import com.shantanu.request.AddCartItemRequest;
 import com.shantanu.request.OrderRequest;
 import com.shantanu.response.PaymentResponse;
+import com.shantanu.response.PaymentVerificationResponse;
 import com.shantanu.service.OrderService;
 import com.shantanu.service.PaymentService;
 import com.shantanu.service.UserService;
@@ -43,5 +44,27 @@ public class OrderController {
         User user = userService.findUserByJwtToken(jwt);
         List<Order> orders = orderService.getUsersOrder(user.getId());
         return new ResponseEntity<>(orders, HttpStatus.OK);
+    }
+
+    @GetMapping("/payment/verify")
+    public ResponseEntity<PaymentVerificationResponse> verifyPayment(
+            @RequestParam("session_id") String sessionId,
+            @RequestParam("order_id") Long orderId,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.findUserByJwtToken(jwt);
+        Order order = orderService.findOrderById(orderId);
+
+        if (!order.getCustomer().getId().equals(user.getId())) {
+            return new ResponseEntity<>(
+                    new PaymentVerificationResponse(false, "Payment does not belong to this account"),
+                    HttpStatus.FORBIDDEN
+            );
+        }
+
+        boolean verified = paymentService.verifyPayment(sessionId, orderId);
+        HttpStatus status = verified ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+        String message = verified ? "Payment verified" : "Payment could not be verified";
+
+        return new ResponseEntity<>(new PaymentVerificationResponse(verified, message), status);
     }
 }

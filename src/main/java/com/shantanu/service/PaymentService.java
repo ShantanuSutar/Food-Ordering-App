@@ -6,4 +6,5 @@ import com.stripe.exception.StripeException;
 
 public interface PaymentService {
     public PaymentResponse createPaymentLink(Order order) throws StripeException;
+    public boolean verifyPayment(String sessionId, Long orderId) throws StripeException;
 }
