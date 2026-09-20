@@ -19,6 +19,10 @@ public class OrderItem {
     @ManyToOne
     private Food food;
 
+    private String itemName;
+
+    private Long unitPrice;
+
     private int quantity;
 
     private Long totalPrice;

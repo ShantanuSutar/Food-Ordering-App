@@ -182,6 +182,13 @@ class OrderServiceImplementationTest {
         assertEquals(500L, order.getTotalAmount());
         assertEquals(2, order.getTotalItem());
         assertEquals(500L, order.getItems().get(0).getTotalPrice());
+        assertEquals("Paneer Bowl", order.getItems().get(0).getItemName());
+        assertEquals(250L, order.getItems().get(0).getUnitPrice());
+
+        food.setName("Renamed bowl");
+        food.setPrice(999L);
+        assertEquals("Paneer Bowl", order.getItems().get(0).getItemName());
+        assertEquals(250L, order.getItems().get(0).getUnitPrice());
     }
 
     @Test

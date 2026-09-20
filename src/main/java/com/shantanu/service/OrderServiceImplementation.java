@@ -121,6 +121,8 @@ public class OrderServiceImplementation implements OrderService {
 
                 OrderItem orderItem = new OrderItem();
                 orderItem.setFood(food);
+                orderItem.setItemName(food.getName());
+                orderItem.setUnitPrice(food.getPrice());
                 orderItem.setIngredients(validateSelectedIngredients(cartItem.getIngredients(), food, restaurant));
                 orderItem.setQuantity(cartItem.getQuantity());
                 orderItem.setTotalPrice(lineTotal);
