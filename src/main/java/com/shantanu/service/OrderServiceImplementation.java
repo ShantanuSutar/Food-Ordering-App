@@ -291,10 +291,15 @@ public class OrderServiceImplementation implements OrderService {
     @Override
     public List<Order> getRestaurantsOrder(Long restaurantId, String orderStatus, User actor) throws Exception {
         restaurantService.requireRestaurantManagementAccess(restaurantId, actor);
-        List<Order> orders = orderRepository.findByRestaurantIdOrderByCreatedAtDesc(restaurantId);
+        List<Order> orders = orderRepository.findByRestaurantIdOrderByCreatedAtDesc(restaurantId).stream()
+                .filter(order -> order.getPaymentStatus() == PaymentStatus.PAID)
+                .collect(Collectors.toList());
 
         if(orderStatus != null && !orderStatus.isBlank() && !"ALL".equalsIgnoreCase(orderStatus)){
-            orders = orders.stream().filter(order -> order.getOrderStatus().equals(orderStatus)).collect(Collectors.toList());
+            orders = orders.stream()
+                    .filter(order -> order.getOrderStatus() != null
+                            && order.getOrderStatus().equalsIgnoreCase(orderStatus))
+                    .collect(Collectors.toList());
         }
 
         return orders;

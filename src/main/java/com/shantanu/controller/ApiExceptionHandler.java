@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.server.ResponseStatusException;
+import com.stripe.exception.ApiConnectionException;
+import com.stripe.exception.AuthenticationException;
+import com.stripe.exception.StripeException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -38,6 +41,21 @@ public class ApiExceptionHandler {
         return ResponseEntity
                 .status(409)
                 .body(new ApiErrorResponse(409, "Could not save because the data conflicts with an existing record"));
+    }
+
+    @ExceptionHandler(StripeException.class)
+    public ResponseEntity<ApiErrorResponse> handleStripeException(StripeException error) {
+        String message;
+        if (error instanceof AuthenticationException) {
+            message = "Stripe test credentials are invalid or missing";
+        } else if (error instanceof ApiConnectionException) {
+            message = "Stripe is temporarily unavailable. Please try again";
+        } else {
+            message = "Stripe could not start this payment. Check the test account configuration";
+        }
+        return ResponseEntity
+                .status(502)
+                .body(new ApiErrorResponse(502, message));
     }
 
     private String findInvalidField(Throwable error) {

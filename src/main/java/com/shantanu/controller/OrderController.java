@@ -31,7 +31,7 @@ public class OrderController {
     private UserService userService;
 
     @PostMapping("/order")
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ResponseEntity<PaymentResponse> createOrder(@RequestBody OrderRequest req, @RequestHeader("Authorization") String jwt) throws Exception{
         User user = userService.findUserByJwtToken(jwt);
         Order order = orderService.createOrder(req, user);

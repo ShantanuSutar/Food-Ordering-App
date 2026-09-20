@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -124,5 +125,34 @@ class AdminOrderAuthorizationTest {
 
         assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
         verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void restaurantOrderListContainsOnlyVerifiedPaidOrders() throws Exception {
+        User actor = new User();
+        actor.setId(4L);
+
+        Order paid = new Order();
+        paid.setId(1L);
+        paid.setOrderStatus("PENDING");
+        paid.setPaymentStatus(PaymentStatus.PAID);
+
+        Order pending = new Order();
+        pending.setId(2L);
+        pending.setOrderStatus("PENDING");
+        pending.setPaymentStatus(PaymentStatus.PENDING_PAYMENT);
+
+        Order failed = new Order();
+        failed.setId(3L);
+        failed.setOrderStatus("PENDING");
+        failed.setPaymentStatus(PaymentStatus.PAYMENT_FAILED);
+
+        when(orderRepository.findByRestaurantIdOrderByCreatedAtDesc(10L))
+                .thenReturn(List.of(paid, pending, failed));
+
+        List<Order> visibleOrders = orderService.getRestaurantsOrder(10L, "ALL", actor);
+
+        assertEquals(List.of(paid), visibleOrders);
+        verify(restaurantService).requireRestaurantManagementAccess(10L, actor);
     }
 }

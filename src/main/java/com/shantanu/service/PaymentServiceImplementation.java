@@ -29,7 +29,7 @@ import java.util.List;
 @Service
 public class PaymentServiceImplementation implements PaymentService {
 
-    private static final String CHECKOUT_CURRENCY = "inr";
+    private static final String DEFAULT_CHECKOUT_CURRENCY = "inr";
 
     @Value("${stripe.secret-key}")
     private String stripeSecretKey;
@@ -40,6 +40,9 @@ public class PaymentServiceImplementation implements PaymentService {
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
 
+    @Value("${app.payment.currency:inr}")
+    private String checkoutCurrency;
+
     @Autowired
     private OrderRepository orderRepository;
 
@@ -47,11 +50,13 @@ public class PaymentServiceImplementation implements PaymentService {
     private CartService cartService;
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PaymentResponse createPaymentLink(Order order) throws StripeException {
         Stripe.apiKey = stripeSecretKey;
+        String currency = normalizedCheckoutCurrency();
+        long amount = checkoutAmount(order);
 
-        SessionCreateParams params = SessionCreateParams.builder()
+        SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
                 .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
                 .setMode(SessionCreateParams.Mode.PAYMENT)
                 .setClientReferenceId(order.getId().toString())
@@ -60,22 +65,35 @@ public class PaymentServiceImplementation implements PaymentService {
                 .setCancelUrl(frontendUrl + "/payment/fail?order_id=" + order.getId())
                 .putMetadata("order_id", order.getId().toString())
                 .putMetadata("user_id", order.getCustomer().getId().toString())
+                .setBillingAddressCollection(SessionCreateParams.BillingAddressCollection.REQUIRED)
+                .setPaymentIntentData(SessionCreateParams.PaymentIntentData.builder()
+                        .setDescription("DineHub order #" + order.getId())
+                        .putMetadata("order_id", order.getId().toString())
+                        .putMetadata("user_id", order.getCustomer().getId().toString())
+                        .build())
                 .addLineItem(SessionCreateParams.LineItem.builder()
                         .setQuantity(1L)
                         .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
-                                .setCurrency(CHECKOUT_CURRENCY)
-                                .setUnitAmount(order.getTotalPrice() * 100)
+                                .setCurrency(currency)
+                                .setUnitAmount(amount)
                                 .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
                                         .setName("DineHub order #" + order.getId())
                                         .build())
                                 .build())
-                        .build())
-                .build();
+                        .build());
 
-        Session session = Session.create(params);
+        String customerEmail = order.getCustomer().getEmail();
+        if (customerEmail != null && !customerEmail.isBlank()) {
+            paramsBuilder.setCustomerEmail(customerEmail.trim());
+        }
+
+        Session session = Session.create(paramsBuilder.build());
+        if (session.getUrl() == null || session.getUrl().isBlank()) {
+            throw new IllegalStateException("Stripe did not return a checkout URL");
+        }
         order.setStripeSessionId(session.getId());
         order.setPaymentStatus(PaymentStatus.PENDING_PAYMENT);
-        order.setPaymentCurrency(CHECKOUT_CURRENCY);
+        order.setPaymentCurrency(currency);
         orderRepository.save(order);
 
         PaymentResponse response = new PaymentResponse();
@@ -84,7 +102,7 @@ public class PaymentServiceImplementation implements PaymentService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PaymentVerificationResponse verifyAndFinalizePayment(
             String sessionId,
             Long orderId,
@@ -118,7 +136,7 @@ public class PaymentServiceImplementation implements PaymentService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void processWebhook(String payload, String signatureHeader) throws Exception {
         if (stripeWebhookSecret == null || stripeWebhookSecret.isBlank()) {
             throw new IllegalStateException("Stripe webhook secret is not configured");
@@ -238,8 +256,14 @@ public class PaymentServiceImplementation implements PaymentService {
     private void validateSessionOrder(Session session, Order order) throws Exception {
         Long sessionOrderId = extractOrderId(session);
         String clientReferenceId = session.getClientReferenceId();
-        String metadataUserId = session.getMetadata().get("user_id");
+        String metadataUserId = session.getMetadata() == null
+                ? null
+                : session.getMetadata().get("user_id");
         Long expectedAmount = Math.multiplyExact(order.getTotalPrice(), 100L);
+        String expectedCurrency = order.getPaymentCurrency();
+        if (expectedCurrency == null || expectedCurrency.isBlank()) {
+            expectedCurrency = normalizedCheckoutCurrency();
+        }
 
         if (!order.getId().equals(sessionOrderId)
                 || clientReferenceId == null
@@ -247,13 +271,16 @@ public class PaymentServiceImplementation implements PaymentService {
                 || metadataUserId == null
                 || !order.getCustomer().getId().toString().equals(metadataUserId)
                 || !expectedAmount.equals(session.getAmountTotal())
-                || !CHECKOUT_CURRENCY.equalsIgnoreCase(session.getCurrency())) {
+                || session.getCurrency() == null
+                || !expectedCurrency.equalsIgnoreCase(session.getCurrency())) {
             throw new Exception("Stripe session does not match this order");
         }
     }
 
     private Long extractOrderId(Session session) throws Exception {
-        String metadataOrderId = session.getMetadata().get("order_id");
+        String metadataOrderId = session.getMetadata() == null
+                ? null
+                : session.getMetadata().get("order_id");
         if (metadataOrderId == null || metadataOrderId.isBlank()) {
             throw new Exception("Stripe session is missing order metadata");
         }
@@ -290,7 +317,7 @@ public class PaymentServiceImplementation implements PaymentService {
 
         String currency = order.getPaymentCurrency();
         if (currency == null || currency.isBlank()) {
-            currency = CHECKOUT_CURRENCY;
+            currency = normalizedCheckoutCurrency();
         }
 
         return new PaymentHistoryResponse(
@@ -305,5 +332,26 @@ public class PaymentServiceImplementation implements PaymentService {
                 order.getStripePaymentIntentId(),
                 "Stripe Checkout"
         );
+    }
+
+    private String normalizedCheckoutCurrency() {
+        String currency = checkoutCurrency == null ? "" : checkoutCurrency.trim().toLowerCase();
+        if (!currency.matches("[a-z]{3}")) {
+            return DEFAULT_CHECKOUT_CURRENCY;
+        }
+        return currency;
+    }
+
+    private long checkoutAmount(Order order) {
+        if (order == null || order.getId() == null || order.getCustomer() == null
+                || order.getCustomer().getId() == null || order.getTotalPrice() == null
+                || order.getTotalPrice() <= 0) {
+            throw new IllegalArgumentException("Order is not ready for payment");
+        }
+        try {
+            return Math.multiplyExact(order.getTotalPrice(), 100L);
+        } catch (ArithmeticException error) {
+            throw new IllegalArgumentException("Order total is too large for payment", error);
+        }
     }
 }
