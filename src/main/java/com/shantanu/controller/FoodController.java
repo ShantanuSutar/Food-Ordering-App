@@ -1,14 +1,9 @@
 package com.shantanu.controller;
 
 import com.shantanu.model.Food;
-import com.shantanu.model.Restaurant;
-import com.shantanu.model.User;
-import com.shantanu.request.CreateFoodRequest;
 import com.shantanu.response.FoodSearchResponse;
 import com.shantanu.response.TopMealResponse;
 import com.shantanu.service.FoodService;
-import com.shantanu.service.RestaurantService;
-import com.shantanu.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,12 +17,6 @@ public class FoodController {
 
     @Autowired
     private FoodService foodService;
-
-    @Autowired
-    private UserService userService;
-
-    @Autowired
-    private RestaurantService restaurantService;
 
     @GetMapping("/top")
     public ResponseEntity<List<TopMealResponse>> getTopMeals(
@@ -50,12 +39,8 @@ public class FoodController {
             @RequestParam(required = false) boolean seasonal,
             @RequestParam(required = false) boolean nonveg,
             @RequestParam(required = false) String foodCategory,
-            @PathVariable Long restaurantId,
-            @RequestHeader("Authorization") String jwt
-    ) throws Exception {
-
-        User user = userService.findUserByJwtToken(jwt);
-
+            @PathVariable Long restaurantId
+    ) {
         List<Food> foods = foodService.getRestaurantsFood(
                 restaurantId,
                 vegetarian,
