@@ -48,6 +48,22 @@ public class OrderController {
         return new ResponseEntity<>(orders, HttpStatus.OK);
     }
 
+    @GetMapping("/order/{id}")
+    public ResponseEntity<Order> getOrder(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.findUserByJwtToken(jwt);
+        return ResponseEntity.ok(orderService.findUsersOrderById(id, user.getId()));
+    }
+
+    @PutMapping("/order/{id}/cancel")
+    public ResponseEntity<Order> cancelOrder(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.findUserByJwtToken(jwt);
+        return ResponseEntity.ok(orderService.cancelOrder(id, user));
+    }
+
     @PostMapping("/payment/verify")
     public ResponseEntity<PaymentVerificationResponse> verifyPayment(
             @RequestBody PaymentVerificationRequest request,

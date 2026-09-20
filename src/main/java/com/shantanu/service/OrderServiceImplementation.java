@@ -51,6 +51,9 @@ public class OrderServiceImplementation implements OrderService {
     @Autowired
     private CartService cartService;
 
+    @Autowired
+    private PaymentService paymentService;
+
     @Override
     @Transactional
     public Order createOrder(OrderRequest order, User user) throws Exception {
@@ -246,14 +249,43 @@ public class OrderServiceImplementation implements OrderService {
     }
 
     @Override
-    public void cancelOrder(Long orderId) throws Exception {
-        Order order = findOrderById(orderId);
-        orderRepository.deleteById(orderId);
+    @Transactional
+    public Order cancelOrder(Long orderId, User actor) throws Exception {
+        if (actor == null || actor.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication is required");
+        }
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        if (order.getCustomer() == null || !actor.getId().equals(order.getCustomer().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot cancel this order");
+        }
+
+        String currentStatus = order.getOrderStatus() == null
+                ? "PENDING"
+                : order.getOrderStatus().trim().toUpperCase(Locale.ROOT);
+        if ("CANCELLED".equals(currentStatus)) return order;
+        if (!"PENDING".equals(currentStatus)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Only pending orders can be cancelled"
+            );
+        }
+        if (order.getPaymentStatus() == PaymentStatus.PAID) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Paid orders require restaurant support for cancellation"
+            );
+        }
+
+        paymentService.cancelPendingPayment(order);
+        order.setOrderStatus("CANCELLED");
+        order.setPaymentStatus(PaymentStatus.PAYMENT_CANCELLED);
+        return orderRepository.save(order);
     }
 
     @Override
     public List<Order> getUsersOrder(Long userId) throws Exception {
-        return orderRepository.findByCustomerId(userId);
+        return orderRepository.findByCustomerIdOrderByCreatedAtDesc(userId);
     }
 
     @Override
@@ -276,5 +308,14 @@ public class OrderServiceImplementation implements OrderService {
         }
 
         return optionalOrder.get();
+    }
+
+    @Override
+    public Order findUsersOrderById(Long orderId, Long userId) {
+        if (orderId == null || userId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A valid order is required");
+        }
+        return orderRepository.findByIdAndCustomerId(orderId, userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
     }
 }

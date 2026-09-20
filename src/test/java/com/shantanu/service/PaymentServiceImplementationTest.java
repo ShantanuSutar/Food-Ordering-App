@@ -66,7 +66,7 @@ class PaymentServiceImplementationTest {
         when(session.getMetadata()).thenReturn(Map.of("order_id", "12", "user_id", "5"));
         when(session.getClientReferenceId()).thenReturn("12");
         when(session.getAmountTotal()).thenReturn(25000L);
-        when(session.getCurrency()).thenReturn("usd");
+        when(session.getCurrency()).thenReturn("inr");
         when(session.getPaymentStatus()).thenReturn("paid");
         when(session.getPaymentIntent()).thenReturn("pi_123");
 
@@ -81,7 +81,7 @@ class PaymentServiceImplementationTest {
             assertEquals(PaymentStatus.PAID, order.getPaymentStatus());
             assertEquals("pi_123", order.getStripePaymentIntentId());
             assertEquals(25000L, order.getPaidAmount());
-            assertEquals("usd", order.getPaymentCurrency());
+            assertEquals("inr", order.getPaymentCurrency());
             verify(orderRepository, times(1)).save(order);
             verify(cartService, times(1)).clearCart(5L);
         }

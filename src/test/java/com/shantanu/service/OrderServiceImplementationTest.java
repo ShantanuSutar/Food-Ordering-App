@@ -47,6 +47,8 @@ class OrderServiceImplementationTest {
     private RestaurantService restaurantService;
     @Mock
     private CartService cartService;
+    @Mock
+    private PaymentService paymentService;
 
     @InjectMocks
     private OrderServiceImplementation orderService;
@@ -87,7 +89,7 @@ class OrderServiceImplementationTest {
         cart.setItems(new ArrayList<>());
         cart.getItems().add(cartItem);
 
-        when(restaurantService.findRestaurantById(2L)).thenReturn(restaurant);
+        lenient().when(restaurantService.findRestaurantById(2L)).thenReturn(restaurant);
         lenient().when(cartService.findCartByUserId(1L)).thenReturn(cart);
         lenient().when(orderItemRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(orderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -223,6 +225,59 @@ class OrderServiceImplementationTest {
 
         verify(addressService).resolveCheckoutAddress(requestAddress, user);
         verify(addressService).createSnapshot(savedAddress);
+    }
+
+    @Test
+    void customerCanCancelPendingUnpaidOrder() throws Exception {
+        Order order = pendingOrder(PaymentStatus.PENDING_PAYMENT);
+        when(orderRepository.findByIdForUpdate(22L)).thenReturn(java.util.Optional.of(order));
+
+        Order cancelled = orderService.cancelOrder(22L, user);
+
+        assertEquals("CANCELLED", cancelled.getOrderStatus());
+        assertEquals(PaymentStatus.PAYMENT_CANCELLED, cancelled.getPaymentStatus());
+        verify(paymentService).cancelPendingPayment(order);
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void customerCannotCancelPaidOrder() {
+        Order order = pendingOrder(PaymentStatus.PAID);
+        when(orderRepository.findByIdForUpdate(22L)).thenReturn(java.util.Optional.of(order));
+
+        ResponseStatusException error = assertThrows(
+                ResponseStatusException.class,
+                () -> orderService.cancelOrder(22L, user)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
+        assertEquals("Paid orders require restaurant support for cancellation", error.getReason());
+        verifyNoInteractions(paymentService);
+    }
+
+    @Test
+    void customerCannotCancelAnotherUsersOrder() {
+        Order order = pendingOrder(PaymentStatus.PENDING_PAYMENT);
+        User anotherUser = new User();
+        anotherUser.setId(99L);
+        when(orderRepository.findByIdForUpdate(22L)).thenReturn(java.util.Optional.of(order));
+
+        ResponseStatusException error = assertThrows(
+                ResponseStatusException.class,
+                () -> orderService.cancelOrder(22L, anotherUser)
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, error.getStatusCode());
+        verifyNoInteractions(paymentService);
+    }
+
+    private Order pendingOrder(PaymentStatus paymentStatus) {
+        Order order = new Order();
+        order.setId(22L);
+        order.setCustomer(user);
+        order.setOrderStatus("PENDING");
+        order.setPaymentStatus(paymentStatus);
+        return order;
     }
 
     private OrderRequest orderRequest(AddressRequest address) {

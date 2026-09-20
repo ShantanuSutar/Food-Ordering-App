@@ -12,5 +12,6 @@ public interface PaymentService {
     public PaymentResponse createPaymentLink(Order order) throws StripeException;
     PaymentVerificationResponse verifyAndFinalizePayment(String sessionId, Long orderId, Long userId) throws Exception;
     void processWebhook(String payload, String signatureHeader) throws Exception;
+    void cancelPendingPayment(Order order) throws Exception;
     List<PaymentHistoryResponse> getPaymentHistory(Long userId);
 }

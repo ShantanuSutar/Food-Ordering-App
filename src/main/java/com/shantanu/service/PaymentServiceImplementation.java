@@ -11,20 +11,25 @@ import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
 import com.stripe.model.StripeObject;
 import com.stripe.model.checkout.Session;
+import com.stripe.net.ApiResource;
+import com.stripe.net.RequestOptions;
 import com.stripe.net.Webhook;
 import com.stripe.param.checkout.SessionCreateParams;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Date;
+import java.util.Collections;
 import java.util.List;
 
 @Service
 public class PaymentServiceImplementation implements PaymentService {
 
-    private static final String CHECKOUT_CURRENCY = "usd";
+    private static final String CHECKOUT_CURRENCY = "inr";
 
     @Value("${stripe.secret-key}")
     private String stripeSecretKey;
@@ -88,6 +93,10 @@ public class PaymentServiceImplementation implements PaymentService {
         verifyOrderOwnership(order, userId);
         verifyStoredSession(order, sessionId);
 
+        if ("CANCELLED".equalsIgnoreCase(order.getOrderStatus())) {
+            throw new IllegalStateException("This order has been cancelled");
+        }
+
         if (order.getPaymentStatus() == PaymentStatus.PAID) {
             return verifiedResponse(order);
         }
@@ -131,6 +140,10 @@ public class PaymentServiceImplementation implements PaymentService {
         verifyStoredSession(order, session.getId());
         validateSessionOrder(session, order);
 
+        if ("CANCELLED".equalsIgnoreCase(order.getOrderStatus())) {
+            return;
+        }
+
         if ("checkout.session.completed".equals(eventType)
                 || "checkout.session.async_payment_succeeded".equals(eventType)) {
             if ("paid".equalsIgnoreCase(session.getPaymentStatus())) {
@@ -139,10 +152,42 @@ public class PaymentServiceImplementation implements PaymentService {
             return;
         }
 
-        if (order.getPaymentStatus() != PaymentStatus.PAID) {
+        if (order.getPaymentStatus() != PaymentStatus.PAID
+                && order.getPaymentStatus() != PaymentStatus.PAYMENT_CANCELLED) {
             order.setPaymentStatus(PaymentStatus.PAYMENT_FAILED);
             orderRepository.save(order);
         }
+    }
+
+    @Override
+    public void cancelPendingPayment(Order order) throws Exception {
+        if (order.getPaymentStatus() == PaymentStatus.PAYMENT_FAILED
+                || order.getPaymentStatus() == PaymentStatus.PAYMENT_CANCELLED) {
+            return;
+        }
+        if (order.getStripeSessionId() == null || order.getStripeSessionId().isBlank()) {
+            return;
+        }
+
+        Stripe.apiKey = stripeSecretKey;
+        Session session = Session.retrieve(order.getStripeSessionId());
+        if ("paid".equalsIgnoreCase(session.getPaymentStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Payment has already completed for this order"
+            );
+        }
+        String expireUrl = Stripe.getApiBase()
+                + "/v1/checkout/sessions/"
+                + ApiResource.urlEncodeId(order.getStripeSessionId())
+                + "/expire";
+        ApiResource.request(
+                ApiResource.RequestMethod.POST,
+                expireUrl,
+                Collections.emptyMap(),
+                Session.class,
+                (RequestOptions) null
+        );
     }
 
     @Override

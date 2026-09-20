@@ -11,11 +11,13 @@ public interface OrderService {
 
     public Order updateOrder(Long orderId, String orderStatus, User actor) throws Exception;
 
-    public void cancelOrder(Long orderId) throws Exception;
+    public Order cancelOrder(Long orderId, User actor) throws Exception;
 
     public List<Order> getUsersOrder(Long userId) throws Exception;
 
     public List<Order> getRestaurantsOrder(Long restaurantId, String orderStatus, User actor) throws Exception;
 
     public Order findOrderById (Long orderId) throws Exception;
+
+    Order findUsersOrderById(Long orderId, Long userId) throws Exception;
 }
