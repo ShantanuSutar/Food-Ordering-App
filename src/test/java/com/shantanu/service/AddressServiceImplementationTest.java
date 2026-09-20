@@ -19,6 +19,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -116,6 +117,20 @@ class AddressServiceImplementationTest {
         assertEquals("99 New Street", savedAddress.getStreetAddress());
         assertEquals("12 Market Road", historicalOrder.getDeliveryAddress().getStreetAddress());
         assertNotSame(savedAddress, historicalOrder.getDeliveryAddress());
+    }
+
+    @Test
+    void checkoutWithSavedAddressUsesOwnedServerValuesWithoutUpdatingIt() throws Exception {
+        AddressRequest request = completeAddress();
+        request.setId(7L);
+        request.setStreetAddress("Client supplied replacement");
+
+        Address result = addressService.resolveCheckoutAddress(request, user);
+
+        assertSame(savedAddress, result);
+        assertEquals("12 Market Road", savedAddress.getStreetAddress());
+        verify(addressRepository, never()).save(any());
+        verify(userRepository, never()).save(any());
     }
 
     private AddressRequest completeAddress() {

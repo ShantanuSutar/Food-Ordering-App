@@ -7,9 +7,9 @@ import com.shantanu.model.User;
 import com.shantanu.repository.CartRepository;
 import com.shantanu.repository.UserRepository;
 import com.shantanu.request.LoginRequest;
+import com.shantanu.request.SignupRequest;
 import com.shantanu.response.AuthResponse;
 import com.shantanu.service.CustomerUserDetailsService;
-import lombok.extern.java.Log;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,8 +24,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collection;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/auth")
@@ -47,18 +49,21 @@ public class AuthController {
     private CartRepository cartRepository;
 
     @PostMapping("/signup")
-    public ResponseEntity<AuthResponse> createUserHandler(@RequestBody User user) throws Exception {
+    public ResponseEntity<AuthResponse> createUserHandler(@RequestBody SignupRequest request) throws Exception {
+        validateSignupRequest(request);
 
-        User isEmailExist = userRepository.findByEmail(user.getEmail());
+        String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
+
+        User isEmailExist = userRepository.findByEmail(normalizedEmail);
         if(isEmailExist != null){
             throw new Exception("Email is already used with another account");
         }
 
         User createdUser = new User();
-        createdUser.setEmail(user.getEmail());
-        createdUser.setFullName(user.getFullName());
-        createdUser.setRole(user.getRole());
-        createdUser.setPassword(passwordEncoder.encode(user.getPassword()));
+        createdUser.setEmail(normalizedEmail);
+        createdUser.setFullName(request.getFullName().trim());
+        createdUser.setRole(request.getRole() == null ? USER_ROLE.ROLE_CUSTOMER : request.getRole());
+        createdUser.setPassword(passwordEncoder.encode(request.getPassword()));
 
         User savedUser = userRepository.save(createdUser);
 
@@ -66,7 +71,12 @@ public class AuthController {
         cart.setCustomer(savedUser);
         cartRepository.save(cart);
 
-        Authentication authentication = new UsernamePasswordAuthenticationToken(user.getEmail(), user.getPassword());
+        UserDetails userDetails = customerUserDetailsService.loadUserByUsername(savedUser.getEmail());
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                userDetails.getAuthorities()
+        );
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         String jwt = jwtProvider.generateToken(authentication);
@@ -77,6 +87,28 @@ public class AuthController {
         authResponse.setRole(savedUser.getRole());
 
         return new ResponseEntity<>(authResponse, HttpStatus.CREATED);
+    }
+
+    private void validateSignupRequest(SignupRequest request) {
+        if (request == null
+                || request.getFullName() == null
+                || request.getFullName().isBlank()
+                || request.getEmail() == null
+                || request.getEmail().isBlank()
+                || !request.getEmail().contains("@")
+                || request.getPassword() == null
+                || request.getPassword().length() < 6) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Full name, a valid email, and a password of at least 6 characters are required"
+            );
+        }
+
+        if (request.getRole() != null
+                && request.getRole() != USER_ROLE.ROLE_CUSTOMER
+                && request.getRole() != USER_ROLE.ROLE_RESTAURANT_OWNER) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This account role cannot be self-registered");
+        }
     }
 
     @PostMapping("/signin")

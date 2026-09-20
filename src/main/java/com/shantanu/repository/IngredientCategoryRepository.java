@@ -8,4 +8,6 @@ import java.util.List;
 public interface IngredientCategoryRepository extends JpaRepository<IngredientCategory, Long> {
 
     List<IngredientCategory> findByRestaurantId(Long id);
+
+    boolean existsByRestaurantIdAndNameIgnoreCase(Long restaurantId, String name);
 }

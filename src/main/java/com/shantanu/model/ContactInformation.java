@@ -1,8 +1,9 @@
 package com.shantanu.model;
 
-import jakarta.persistence.Entity;
+import jakarta.persistence.Embeddable;
 import lombok.Data;
 
+@Embeddable
 @Data
 public class ContactInformation {
     private String email;

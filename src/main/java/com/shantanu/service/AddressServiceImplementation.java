@@ -89,7 +89,7 @@ public class AddressServiceImplementation implements AddressService {
             throw new Exception("Delivery address is required");
         }
         if (request.getId() != null) {
-            return updateAddress(request.getId(), request, user);
+            return findOwnedAddress(request.getId(), user);
         }
         return createAddress(request, user);
     }

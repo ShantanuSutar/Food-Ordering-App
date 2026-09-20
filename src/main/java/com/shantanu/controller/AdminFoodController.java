@@ -29,7 +29,7 @@ public class AdminFoodController {
     public ResponseEntity<Food> createFood(@RequestBody CreateFoodRequest req, @RequestHeader("Authorization") String jwt) throws Exception{
         User user = userService.findUserByJwtToken(jwt);
         Restaurant restaurant = restaurantService.getRestaurantByUserId(user.getId());
-        Food food = foodService.createFood(req, req.getCategory(), restaurant);
+        Food food = foodService.createFood(req, restaurant);
 
         return new ResponseEntity<>(food, HttpStatus.CREATED);
     }
@@ -38,17 +38,26 @@ public class AdminFoodController {
     @DeleteMapping("/{id}")
     public ResponseEntity<MessageResponse> deleteFood(@PathVariable Long id, @RequestHeader("Authorization") String jwt) throws Exception{
         User user = userService.findUserByJwtToken(jwt);
-        foodService.deleteFood(id);
+        foodService.deleteFood(id, user);
 
         MessageResponse res = new MessageResponse();
-        res.setMessage("Food deleted successfully!");
+        res.setMessage("Food removed from the menu successfully!");
         return new ResponseEntity<>(res, HttpStatus.OK);
+    }
+
+    @PutMapping("/{id}/details")
+    public ResponseEntity<Food> updateFood(
+            @PathVariable Long id,
+            @RequestBody CreateFoodRequest req,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.findUserByJwtToken(jwt);
+        return ResponseEntity.ok(foodService.updateFood(id, req, user));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Food> updateFoodAvailabilityStatus(@PathVariable Long id, @RequestHeader("Authorization") String jwt) throws Exception{
         User user = userService.findUserByJwtToken(jwt);
-        Food food = foodService.updateAvailabilityStatus(id);
+        Food food = foodService.updateAvailabilityStatus(id, user);
 
         return new ResponseEntity<>(food, HttpStatus.OK);
     }

@@ -10,9 +10,9 @@ import java.util.List;
 public interface RestaurantService {
     public Restaurant createRestaurant(CreateRestaurantRequest req, User user);
 
-    public Restaurant updateRestaurant(Long restaurantid, CreateRestaurantRequest updatedRestaurant) throws Exception;
+    public Restaurant updateRestaurant(Long restaurantid, CreateRestaurantRequest updatedRestaurant, User actor) throws Exception;
 
-    public void deleteRestaurant(Long restaurantId) throws Exception;
+    public void deleteRestaurant(Long restaurantId, User actor) throws Exception;
 
     public List<Restaurant> getAllRestaurants();
 
@@ -24,7 +24,9 @@ public interface RestaurantService {
 
     public RestaurantDTO addToFavourites(Long restaurantId, User user) throws Exception;
 
-    public Restaurant updateRestaurantStatus(Long id) throws Exception;
+    public Restaurant updateRestaurantStatus(Long id, User actor) throws Exception;
+
+    public Restaurant requireRestaurantManagementAccess(Long restaurantId, User actor) throws Exception;
 
 
 }

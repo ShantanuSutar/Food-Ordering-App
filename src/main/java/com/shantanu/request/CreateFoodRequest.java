@@ -1,7 +1,5 @@
 package com.shantanu.request;
 
-import com.shantanu.model.Category;
-import com.shantanu.model.IngredientsItem;
 import lombok.Data;
 
 import java.util.List;
@@ -12,11 +10,11 @@ public class CreateFoodRequest {
     private String description;
     private Long price;
 
-    private Category category;
+    private Long categoryId;
     private List<String> images;
 
-    private long restaurantId;
-    private boolean vegetarian;
-    private boolean seasonal;
-    private List<IngredientsItem> ingredients;
+    private Long restaurantId;
+    private Boolean vegetarian;
+    private Boolean seasonal;
+    private List<Long> ingredientIds;
 }

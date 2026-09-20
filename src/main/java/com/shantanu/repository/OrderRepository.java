@@ -18,6 +18,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     public List<Order> findByRestaurantId(Long restaurantId);
 
+    List<Order> findByRestaurantIdOrderByCreatedAtDesc(Long restaurantId);
+
     List<Order> findByDeliveryAddressId(Long addressId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

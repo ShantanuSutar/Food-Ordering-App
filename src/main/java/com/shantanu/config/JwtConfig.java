@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtConfig {
 
-    @Value("${JWT_SECRET:default-secret-key-that-is-long-enough-for-hs256-algorithm}")
+    @Value("${JWT_SECRET}")
     private String secretKey;
 
     public String getSecretKey() {

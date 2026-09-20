@@ -11,6 +11,10 @@ import java.util.List;
 public interface FoodRepository extends JpaRepository<Food, Long> {
     List<Food> findByRestaurantId(Long restaurantId);
 
+    boolean existsByFoodCategoryId(Long categoryId);
+
+    boolean existsByIngredientsId(Long ingredientId);
+
     @Query("""
             SELECT DISTINCT f FROM Food f
             JOIN f.restaurant r
