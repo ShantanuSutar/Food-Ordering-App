@@ -7,19 +7,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DatabaseConnectionConfigTest {
 
     @Test
-    void convertsNeonConnectionStringToJdbcDetails() {
+    void convertsPostgresConnectionStringToJdbcUrl() {
         DatabaseConnectionConfig.ParsedDatabaseUrl result =
                 DatabaseConnectionConfig.parseDatabaseUrl(
-                        "postgresql://dinehub_user:p%40ss%2Bword@ep-example.neon.tech/neondb"
+                        "postgresql://database.example.invalid/testdb"
                                 + "?sslmode=require&channel_binding=require"
                 );
 
         assertThat(result.jdbcUrl()).isEqualTo(
-                "jdbc:postgresql://ep-example.neon.tech/neondb"
+                "jdbc:postgresql://database.example.invalid/testdb"
                         + "?sslmode=require&channelBinding=require"
         );
-        assertThat(result.username()).isEqualTo("dinehub_user");
-        assertThat(result.password()).isEqualTo("p@ss+word");
+        assertThat(result.username()).isNull();
+        assertThat(result.password()).isNull();
     }
 
     @Test
