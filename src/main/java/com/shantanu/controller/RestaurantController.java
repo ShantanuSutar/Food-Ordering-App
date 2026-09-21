@@ -1,6 +1,5 @@
 package com.shantanu.controller;
 
-import com.shantanu.dto.RestaurantDTO;
 import com.shantanu.model.Restaurant;
 import com.shantanu.model.User;
 import com.shantanu.request.CreateRestaurantRequest;
@@ -43,10 +42,10 @@ public class RestaurantController {
 
 
     @PutMapping("/{id}/add-favourites")
-    public ResponseEntity<RestaurantDTO> addToFavourites(@RequestHeader("Authorization") String jwt, @PathVariable Long id) throws Exception {
+    public ResponseEntity<Restaurant> addToFavourites(@RequestHeader("Authorization") String jwt, @PathVariable Long id) throws Exception {
         User user= userService.findUserByJwtToken(jwt);
 
-        RestaurantDTO restaurant = restaurantService.addToFavourites(id, user);
+        Restaurant restaurant = restaurantService.addToFavourites(id, user);
         return new ResponseEntity<>(restaurant, HttpStatus.OK);
     }
 

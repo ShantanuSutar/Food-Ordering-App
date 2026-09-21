@@ -1,6 +1,5 @@
 package com.shantanu.service;
 
-import com.shantanu.dto.RestaurantDTO;
 import com.shantanu.model.Restaurant;
 import com.shantanu.model.User;
 import com.shantanu.request.CreateRestaurantRequest;
@@ -22,7 +21,9 @@ public interface RestaurantService {
 
     public Restaurant getRestaurantByUserId(Long userId) throws Exception;
 
-    public RestaurantDTO addToFavourites(Long restaurantId, User user) throws Exception;
+    public Restaurant addToFavourites(Long restaurantId, User user) throws Exception;
+
+    public List<Restaurant> getFavouriteRestaurants(User user);
 
     public Restaurant updateRestaurantStatus(Long id, User actor) throws Exception;
 

@@ -16,7 +16,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class RestaurantServiceImplementation implements RestaurantService{
@@ -133,7 +136,7 @@ public class RestaurantServiceImplementation implements RestaurantService{
     }
 
     @Override
-    public RestaurantDTO addToFavourites(Long restaurantId, User user) throws Exception {
+    public Restaurant addToFavourites(Long restaurantId, User user) throws Exception {
         Restaurant restaurant = findRestaurantById(restaurantId);
 
         RestaurantDTO dto = new RestaurantDTO();
@@ -159,7 +162,28 @@ public class RestaurantServiceImplementation implements RestaurantService{
         }
 
         userRepository.save(user);
-        return dto;
+        return restaurant;
+    }
+
+    @Override
+    public List<Restaurant> getFavouriteRestaurants(User user) {
+        if (user == null || user.getFavourites() == null || user.getFavourites().isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> favouriteIds = user.getFavourites().stream()
+                .map(RestaurantDTO::getId)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+        Map<Long, Restaurant> restaurantsById = restaurantRepository.findAllById(favouriteIds)
+                .stream()
+                .collect(Collectors.toMap(Restaurant::getId, Function.identity()));
+
+        return favouriteIds.stream()
+                .map(restaurantsById::get)
+                .filter(restaurant -> restaurant != null)
+                .toList();
     }
 
     @Override

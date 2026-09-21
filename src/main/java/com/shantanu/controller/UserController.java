@@ -1,8 +1,10 @@
 package com.shantanu.controller;
 
+import com.shantanu.model.Restaurant;
 import com.shantanu.model.User;
 import com.shantanu.response.PaymentHistoryResponse;
 import com.shantanu.service.PaymentService;
+import com.shantanu.service.RestaurantService;
 import com.shantanu.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -24,10 +26,20 @@ public class UserController {
     @Autowired
     private PaymentService paymentService;
 
+    @Autowired
+    private RestaurantService restaurantService;
+
     @GetMapping("/profile")
     public ResponseEntity<User> findUserByJwtToken(@RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.findUserByJwtToken(jwt);
         return new ResponseEntity<>(user, HttpStatus.OK);
+    }
+
+    @GetMapping("/favourites")
+    public ResponseEntity<List<Restaurant>> getFavouriteRestaurants(
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.findUserByJwtToken(jwt);
+        return ResponseEntity.ok(restaurantService.getFavouriteRestaurants(user));
     }
 
     @GetMapping("/payments")
