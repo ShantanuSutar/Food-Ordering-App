@@ -30,6 +30,8 @@ The following production values must be configured in the hosting platform:
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `FRONTEND_URL`: the deployed frontend origin used by Stripe redirects
+- `CORS_ALLOWED_ORIGINS`: optional comma-separated list when more than one
+  frontend origin needs browser access
 - `PAYMENT_CURRENCY`: defaults to `inr`
 
 For Render with Neon, add the Neon connection string as `DATABASE_URL` in the
@@ -37,6 +39,11 @@ web service's Environment page. Keep `sslmode=require` in that URL and do not
 surround the value with quotes. Platforms such as Render and Railway normally
 provide `PORT` automatically; the application defaults to `9090` when it is
 absent.
+
+Set `FRONTEND_URL` to the exact Vercel production origin, including `https://`
+and without a path. A trailing slash is accepted and normalized. If Vercel
+preview deployments also need API access, list each trusted preview origin in
+`CORS_ALLOWED_ORIGINS`; do not use a wildcard for authenticated requests.
 
 Use `.env.example` as the variable template. Do not commit `.env` or any live
 credentials.

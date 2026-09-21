@@ -1,7 +1,6 @@
 package com.shantanu.config;
 
-import jakarta.servlet.http.HttpServletRequest;
-import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,16 +15,36 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.List;
+import java.util.stream.Stream;
 
 @Configuration
 @EnableWebSecurity
 public class AppConfig {
 
+    private final List<String> allowedOrigins;
+
+    public AppConfig(
+            @Value("${app.frontend-url:http://localhost:5173}") String frontendUrl,
+            @Value("${CORS_ALLOWED_ORIGINS:}") String additionalOrigins
+    ) {
+        this.allowedOrigins = Stream.concat(
+                        Stream.of(frontendUrl, "http://localhost:5173", "http://127.0.0.1:5173"),
+                        Arrays.stream(additionalOrigins.split(","))
+                )
+                .map(String::trim)
+                .filter(origin -> !origin.isBlank())
+                .map(AppConfig::removeTrailingSlash)
+                .distinct()
+                .toList();
+    }
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource, JwtTokenValidator jwtTokenValidator) throws Exception{
         http.sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/api/food/top", "/api/food/search", "/api/payment/webhook").permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/restaurants",
@@ -43,26 +62,22 @@ public class AppConfig {
         return http.build();
     }
 
-    private CorsConfigurationSource corsConfigurationSource() {
-        return new CorsConfigurationSource() {
-            @Override
-            public @Nullable CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
-                CorsConfiguration cfg = new CorsConfiguration();
-
-                cfg.setAllowedOrigins(Arrays.asList(
-                        "https://dinehub-app.vercel.app",
-                        "http://localhost:5173",
-                        "http://127.0.0.1:5173"
-                ));
-                cfg.setAllowedMethods(Collections.singletonList("*"));
-                cfg.setAllowCredentials(true);
-                cfg.setAllowedHeaders(Collections.singletonList("*"));
-                cfg.setExposedHeaders(Arrays.asList("Authorization"));
-                cfg.setMaxAge(360L);
-
-                return cfg;
-            }
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        return request -> {
+            CorsConfiguration cfg = new CorsConfiguration();
+            cfg.setAllowedOrigins(allowedOrigins);
+            cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+            cfg.setAllowCredentials(true);
+            cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
+            cfg.setExposedHeaders(List.of("Authorization"));
+            cfg.setMaxAge(3600L);
+            return cfg;
         };
+    }
+
+    private static String removeTrailingSlash(String origin) {
+        return origin.endsWith("/") ? origin.substring(0, origin.length() - 1) : origin;
     }
 
     @Bean
