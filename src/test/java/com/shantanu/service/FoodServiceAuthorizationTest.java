@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -157,5 +158,29 @@ class FoodServiceAuthorizationTest {
         assertEquals("Updated bowl", updated.getName());
         assertEquals(300L, updated.getPrice());
         assertTrue(updated.isAvailable());
+    }
+
+    @Test
+    void filtersRestaurantFoodByCategoryIgnoringCaseAndWhitespace() {
+        Category drinks = new Category();
+        drinks.setName("Beverages & Desserts");
+        Category mains = new Category();
+        mains.setName("Main Course");
+
+        Food lassi = new Food();
+        lassi.setFoodCategory(drinks);
+        Food biryani = new Food();
+        biryani.setFoodCategory(mains);
+        when(foodRepository.findByRestaurantId(10L)).thenReturn(List.of(lassi, biryani));
+
+        List<Food> result = foodService.getRestaurantsFood(
+                10L,
+                false,
+                false,
+                false,
+                "  beverages & desserts  "
+        );
+
+        assertEquals(List.of(lassi), result);
     }
 }

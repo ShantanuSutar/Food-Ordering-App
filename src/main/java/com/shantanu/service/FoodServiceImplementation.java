@@ -114,9 +114,10 @@ public class FoodServiceImplementation implements FoodService {
     }
 
     private List<Food> filterByCategory(List<Food> foods, String foodCategory) {
+        String normalizedCategory = foodCategory.trim();
         return foods.stream().filter(food -> {
-            if(food.getFoodCategory() != null){
-                return food.getFoodCategory().getName().equals(foodCategory);
+            if (food.getFoodCategory() != null && food.getFoodCategory().getName() != null) {
+                return food.getFoodCategory().getName().trim().equalsIgnoreCase(normalizedCategory);
             }
 
             return false;

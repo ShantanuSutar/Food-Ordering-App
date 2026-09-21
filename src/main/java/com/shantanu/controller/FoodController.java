@@ -39,14 +39,18 @@ public class FoodController {
             @RequestParam(required = false) boolean seasonal,
             @RequestParam(required = false) boolean nonveg,
             @RequestParam(required = false) String foodCategory,
+            @RequestParam(name = "food_category", required = false) String legacyFoodCategory,
             @PathVariable Long restaurantId
     ) {
+        String requestedCategory = foodCategory != null && !foodCategory.isBlank()
+                ? foodCategory
+                : legacyFoodCategory;
         List<Food> foods = foodService.getRestaurantsFood(
                 restaurantId,
                 vegetarian,
                 nonveg,
                 seasonal,
-                foodCategory
+                requestedCategory
         );
 
         return new ResponseEntity<>(foods, HttpStatus.OK);
